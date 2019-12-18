@@ -12,16 +12,32 @@
 
 RCT_EXPORT_MODULE()
 
-RCT_EXPORT_METHOD(setBrightnessLevel:(float)brightnessLevel)
+void runOnMainQueueWithoutDeadlocking(void (^block)(void))
 {
-    [UIScreen mainScreen].brightness = brightnessLevel;
+    if ([NSThread isMainThread])
+    {
+        block();
+    }
+    else
+    {
+        dispatch_sync(dispatch_get_main_queue(), block);
+    }
 }
 
-RCT_REMAP_METHOD(getBrightnessLevel,
-                 resolver:(RCTPromiseResolveBlock)resolve
-                 rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXPORT_METHOD(setBrightnessLevel:(CGFloat) brightnessLevel)
 {
-    resolve(@([UIScreen mainScreen].brightness));
+    runOnMainQueueWithoutDeadlocking(^{
+        CGFloat brightness = brightnessLevel;
+        // Update the UI on the main thread.
+        [[UIScreen mainScreen] setBrightness: brightness];
+    });
+}
+
+RCT_REMAP_METHOD(getBrightnessLevel, getBrightnessLevel:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    __block float result = 0;
+    result = [UIScreen mainScreen].brightness;
+    resolve(@(result));
 }
 
 @end
